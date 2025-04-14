@@ -36,6 +36,11 @@ module.exports = {
 				{ from: "manifest.json", to: "." },
 				{ from: "src/popup.html", to: "." },
 				{ from: "src/summon.png", to: "." },
+				{
+					from: "src/buildDomTree.js",
+					to: ".",
+					force: true,
+				},
 			],
 		}),
 	],

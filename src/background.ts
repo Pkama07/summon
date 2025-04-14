@@ -14,26 +14,19 @@ const chatModel = new ChatOpenAI({
 chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 	if (message.action === "summon") {
 		chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-			if (tabs[0]?.id) {
-				const translation = await translateToFrench(
-					"Translate the following from English into Italian"
-				);
-				chrome.scripting
-					.executeScript({
-						target: { tabId: tabs[0].id },
-						func: (message?: string) => {
-							console.log(message);
-						},
-						args: [String(translation)],
-					})
-					.then(() => {
-						console.log("Content script injected");
-						sendResponse({ status: "Content script executed" });
-					})
-					.catch((error) => {
-						console.error("Error injecting content script:", error);
-						sendResponse({ status: "error", error: error.message });
-					});
+			const tabId = tabs[0]?.id;
+			if (tabId) {
+				const response = await new Promise((resolve) => {
+					chrome.tabs.sendMessage(
+						tabId,
+						{ action: "buildDomTree" },
+						(response) => {
+							resolve(response);
+						}
+					);
+				});
+				console.log("DOM Tree Response:", response);
+				console.log("Filtered Map:", filterNodes(response));
 			}
 		});
 		return true;
@@ -41,11 +34,75 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 	return false;
 });
 
-async function translateToFrench(text: string) {
-	const messages = [
-		new SystemMessage("Translate the following from English into French"),
-		new HumanMessage(text),
-	];
-	const result = await chatModel.invoke(messages);
-	return result.content;
+function filterNodes(domTree: any): any {
+	if (!domTree || !domTree.map) {
+		return domTree;
+	}
+
+	const filteredMap: { [key: string]: any } = {};
+	const rootId = domTree.rootId;
+
+	function processNode(nodeId: string): string | null {
+		const node = domTree.map[nodeId];
+		if (!node) return null;
+
+		// Always include text nodes
+		if (node.type === "TEXT_NODE") {
+			const newId = `${Object.keys(filteredMap).length}`;
+			filteredMap[newId] = node;
+			return newId;
+		}
+
+		// Include interactive elements
+		if (node.isInteractive) {
+			const newNode = {
+				...node,
+				children: [] as string[],
+			};
+
+			// Process all children
+			if (node.children) {
+				for (const childId of node.children) {
+					const newChildId = processNode(childId);
+					if (newChildId) {
+						newNode.children.push(newChildId);
+					}
+				}
+			}
+
+			const newId = `${Object.keys(filteredMap).length}`;
+			filteredMap[newId] = newNode;
+			return newId;
+		}
+
+		// For non-interactive elements, only process their children
+		if (node.children) {
+			const newChildren: string[] = [];
+			for (const childId of node.children) {
+				const newChildId = processNode(childId);
+				if (newChildId) {
+					newChildren.push(newChildId);
+				}
+			}
+
+			// Only include the node if it has interactive children
+			if (newChildren.length > 0) {
+				const newNode = {
+					...node,
+					children: newChildren,
+				};
+				const newId = `${Object.keys(filteredMap).length}`;
+				filteredMap[newId] = newNode;
+				return newId;
+			}
+		}
+
+		return null;
+	}
+
+	const newRootId = processNode(rootId);
+	return {
+		rootId: newRootId,
+		map: filteredMap,
+	};
 }
