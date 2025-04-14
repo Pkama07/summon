@@ -1,14 +1,18 @@
 {
 	"dependencies": {
+		"@langchain/core": "^0.3.44",
 		"@langchain/openai": "^0.5.5",
+		"clean-webpack-plugin": "^4.0.0",
 		"langchain": "^0.3.21"
 	},
 	"scripts": {
-		"build": "webpack"
+		"build": "webpack",
+		"watch": "webpack --watch"
 	},
 	"devDependencies": {
 		"@types/chrome": "^0.0.315",
 		"copy-webpack-plugin": "^13.0.0",
+		"dotenv-webpack": "^8.1.0",
 		"ts-loader": "^9.5.2",
 		"typescript": "^5.8.3",
 		"webpack": "^5.99.5",

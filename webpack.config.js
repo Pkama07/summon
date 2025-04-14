@@ -1,11 +1,12 @@
 const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
+const Dotenv = require("dotenv-webpack");
+const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 
 module.exports = {
 	mode: "production",
 	entry: {
 		background: "./src/background.ts",
-		content: "./src/content.ts",
 		popup: "./src/popup.ts",
 	},
 	output: {
@@ -26,6 +27,10 @@ module.exports = {
 		],
 	},
 	plugins: [
+		new Dotenv({
+			systemvars: true,
+		}),
+		new CleanWebpackPlugin(),
 		new CopyPlugin({
 			patterns: [
 				{ from: "manifest.json", to: "." },

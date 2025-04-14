@@ -1,18 +1,30 @@
+import { ChatOpenAI } from "@langchain/openai";
+import { SystemMessage, HumanMessage } from "@langchain/core/messages";
+
 interface Message {
 	action: string;
 	payload?: any;
 }
 
+const chatModel = new ChatOpenAI({
+	model: "gpt-4o-mini",
+	apiKey: process.env.OPENAI_API_KEY,
+});
+
 chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
-	console.log("Background script received message:", message);
 	if (message.action === "summon") {
-		chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+		chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
 			if (tabs[0]?.id) {
-				console.log("Injecting content script into tab:", tabs[0].id);
+				const translation = await translateToFrench(
+					"Translate the following from English into Italian"
+				);
 				chrome.scripting
 					.executeScript({
 						target: { tabId: tabs[0].id },
-						files: ["content.js"],
+						func: (message?: string) => {
+							console.log(message);
+						},
+						args: [String(translation)],
 					})
 					.then(() => {
 						console.log("Content script injected");
@@ -28,3 +40,12 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 	}
 	return false;
 });
+
+async function translateToFrench(text: string) {
+	const messages = [
+		new SystemMessage("Translate the following from English into French"),
+		new HumanMessage(text),
+	];
+	const result = await chatModel.invoke(messages);
+	return result.content;
+}
