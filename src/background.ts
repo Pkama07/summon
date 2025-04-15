@@ -16,17 +16,42 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 		chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
 			const tabId = tabs[0]?.id;
 			if (tabId) {
-				const response = await new Promise((resolve) => {
+				const interactionMap: { [key: number]: any } = await new Promise(
+					(resolve) => {
+						chrome.tabs.sendMessage(
+							tabId,
+							{ action: "buildDomTree" },
+							(response) => {
+								resolve(filterNodesAndGetText(response));
+							}
+						);
+					}
+				);
+				const textualInteractionMap = textifyElementMap(interactionMap);
+				const window = await chrome.windows.getCurrent();
+				const rawScreenshot = await new Promise((resolve) => {
+					if (window.id) {
+						chrome.tabs.captureVisibleTab(
+							window.id,
+							{ format: "png" },
+							(dataUrl) => resolve(dataUrl)
+						);
+					} else {
+						resolve("");
+					}
+				});
+				const processedScreenshot = await new Promise((resolve) => {
 					chrome.tabs.sendMessage(
 						tabId,
-						{ action: "buildDomTree" },
+						{
+							action: "processScreenshot",
+							args: { rawScreenshot },
+						},
 						(response) => {
 							resolve(response);
 						}
 					);
 				});
-				console.log("DOM Tree Response:", response);
-				console.log("Filtered Map:", filterNodes(response));
 			}
 		});
 		return true;
@@ -34,75 +59,51 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 	return false;
 });
 
-function filterNodes(domTree: any): any {
+function filterNodesAndGetText(domTree: any) {
 	if (!domTree || !domTree.map) {
-		return domTree;
+		return [];
 	}
+	const elementMap: { [key: number]: any } = {};
+	const map = domTree.map;
 
-	const filteredMap: { [key: string]: any } = {};
-	const rootId = domTree.rootId;
+	function processNode(nodeId: string): string[] {
+		const node = map[nodeId];
 
-	function processNode(nodeId: string): string | null {
-		const node = domTree.map[nodeId];
-		if (!node) return null;
-
-		// Always include text nodes
 		if (node.type === "TEXT_NODE") {
-			const newId = `${Object.keys(filteredMap).length}`;
-			filteredMap[newId] = node;
-			return newId;
+			return [node.text];
 		}
 
-		// Include interactive elements
-		if (node.isInteractive) {
-			const newNode = {
+		let internalText: string[] = [];
+		for (const childId of node.children) {
+			internalText.push(...processNode(childId));
+		}
+
+		if (!node.isInteractive) {
+			return internalText;
+		} else {
+			elementMap[node.highlightIndex] = {
 				...node,
-				children: [] as string[],
+				internalText,
 			};
-
-			// Process all children
-			if (node.children) {
-				for (const childId of node.children) {
-					const newChildId = processNode(childId);
-					if (newChildId) {
-						newNode.children.push(newChildId);
-					}
-				}
-			}
-
-			const newId = `${Object.keys(filteredMap).length}`;
-			filteredMap[newId] = newNode;
-			return newId;
+			return [];
 		}
-
-		// For non-interactive elements, only process their children
-		if (node.children) {
-			const newChildren: string[] = [];
-			for (const childId of node.children) {
-				const newChildId = processNode(childId);
-				if (newChildId) {
-					newChildren.push(newChildId);
-				}
-			}
-
-			// Only include the node if it has interactive children
-			if (newChildren.length > 0) {
-				const newNode = {
-					...node,
-					children: newChildren,
-				};
-				const newId = `${Object.keys(filteredMap).length}`;
-				filteredMap[newId] = newNode;
-				return newId;
-			}
-		}
-
-		return null;
 	}
 
-	const newRootId = processNode(rootId);
-	return {
-		rootId: newRootId,
-		map: filteredMap,
-	};
+	processNode(domTree.rootId);
+	return elementMap;
+}
+
+function textifyElementMap(elementMap: { [key: number]: any }) {
+	return Object.values(elementMap)
+		.map((element) => textifyEntry(element.highlightIndex, element))
+		.join("\n");
+}
+
+function textifyEntry(index: number, obj: any) {
+	const attributeString = Object.entries(obj.attributes)
+		.map(([key, value]) => `${key}="${value}"`)
+		.join(" ");
+	return `[${index}]<${obj.tagName} ${attributeString}>${obj.internalText.join(
+		" "
+	)}</${obj.tagName}>`;
 }

@@ -1,12 +1,54 @@
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+// content script used to gather context for the LLM (process screenshot, dom tree, etc)
+
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 	if (message.action === "buildDomTree") {
-		const result = buildDomTree();
-		sendResponse(result);
+		sendResponse(buildDomTree());
+		return true;
+	} else if (message.action === "processScreenshot") {
+		processImage(message.args.rawScreenshot, 0.75).then((result) => {
+			sendResponse(result);
+		});
 		return true;
 	}
 	return false;
 });
 
+function processImage(base64Image, quality) {
+	return new Promise((resolve, reject) => {
+		const img = new Image();
+		img.onerror = () => {
+			reject(new Error("Failed to load image"));
+		};
+		img.onload = () => {
+			const canvas = document.createElement("canvas");
+			const ctx = canvas.getContext("2d");
+			if (!ctx) {
+				reject(new Error("Failed to create canvas context"));
+				return;
+			}
+			let width = img.width * 0.75;
+			let height = img.height * 0.75;
+			canvas.width = width;
+			canvas.height = height;
+			ctx.drawImage(img, 0, 0, width, height);
+			const imageData = ctx.getImageData(0, 0, width, height);
+			const data = imageData.data;
+			// remove rgb values through averaging
+			for (let i = 0; i < data.length; i += 4) {
+				const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+				data[i] = data[i + 1] = data[i + 2] = avg;
+			}
+			ctx.putImageData(imageData, 0, 0);
+			const newBase64 = canvas.toDataURL("image/jpeg", quality);
+			resolve(newBase64);
+		};
+
+		img.src = base64Image;
+	});
+}
+
+// ALL CREDIT TO browser-use
+// https://github.com/browser-use/browser-use
 const buildDomTree = (
 	args = {
 		doHighlightElements: true,

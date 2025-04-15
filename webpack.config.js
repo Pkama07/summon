@@ -37,10 +37,11 @@ module.exports = {
 				{ from: "src/popup.html", to: "." },
 				{ from: "src/summon.png", to: "." },
 				{
-					from: "src/buildDomTree.js",
+					from: "src/context.js",
 					to: ".",
 					force: true,
 				},
+				{ from: "sys_prompt.md", to: "." },
 			],
 		}),
 	],

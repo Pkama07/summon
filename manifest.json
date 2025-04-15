@@ -3,7 +3,7 @@
 	"name": "Summon",
 	"version": "1.0.0",
 	"description": "Automate your browser with AI",
-	"permissions": ["activeTab", "scripting", "storage", "tabs"],
+	"permissions": ["activeTab", "scripting", "storage", "tabs", "windows"],
 	"host_permissions": ["<all_urls>"],
 	"action": {
 		"default_popup": "popup.html",
@@ -16,7 +16,7 @@
 	"content_scripts": [
 		{
 			"matches": ["<all_urls>"],
-			"js": ["buildDomTree.js"]
+			"js": ["context.js"]
 		}
 	]
 }
