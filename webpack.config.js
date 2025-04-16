@@ -8,6 +8,7 @@ module.exports = {
 	entry: {
 		background: "./src/background.ts",
 		popup: "./src/popup.ts",
+		execute: "./src/execute.ts",
 	},
 	output: {
 		path: path.resolve(__dirname, "dist"),
@@ -41,7 +42,7 @@ module.exports = {
 					to: ".",
 					force: true,
 				},
-				{ from: "sys_prompt.md", to: "." },
+				{ from: "src/sys_prompt.md", to: "." },
 			],
 		}),
 	],
