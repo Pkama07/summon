@@ -5,6 +5,12 @@
 	"description": "Automate your browser with AI",
 	"permissions": ["activeTab", "scripting", "storage", "tabs", "windows"],
 	"host_permissions": ["<all_urls>"],
+	"web_accessible_resources": [
+		{
+			"resources": ["sys_prompt.md"],
+			"matches": ["<all_urls>"]
+		}
+	],
 	"action": {
 		"default_popup": "popup.html",
 		"default_icon": "summon.png"

@@ -1,6 +1,7 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { z } from "zod";
+import sysPrompt from "./sys_prompt.md";
 
 interface Message {
 	action: string;
@@ -74,15 +75,14 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 							args: { rawScreenshot },
 						},
 						(response) => {
-							resolve(response);
+							resolve(response.result);
 						}
 					);
 				});
 
 				// load the system prompt
-				const systemPrompt = await loadFile("assets/sys_prompt.md");
 				const messages = [
-					new SystemMessage(systemPrompt),
+					new SystemMessage(sysPrompt),
 					new HumanMessage({
 						content: [
 							{
@@ -117,7 +117,7 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 async function loadFile(filePath: string) {
 	const fileUrl = chrome.runtime.getURL(filePath);
 	const response = await fetch(fileUrl);
-	return await response.text();
+	return response.text();
 }
 
 function filterNodesAndGetText(domTree: any) {

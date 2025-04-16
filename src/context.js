@@ -1,12 +1,13 @@
 // content script used to gather context for the LLM (process screenshot, dom tree, etc)
 
-chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+	console.log("message", message);
 	if (message.action === "buildDomTree") {
 		sendResponse(buildDomTree());
 		return true;
 	} else if (message.action === "processScreenshot") {
 		processImage(message.args.rawScreenshot, 0.75).then((result) => {
-			sendResponse(result);
+			sendResponse({ result });
 		});
 		return true;
 	}

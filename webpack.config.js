@@ -25,6 +25,11 @@ module.exports = {
 				use: "ts-loader",
 				exclude: /node_modules/,
 			},
+			// load md files raw
+			{
+				test: /\.md$/,
+				use: "raw-loader",
+			},
 		],
 	},
 	plugins: [
@@ -42,7 +47,6 @@ module.exports = {
 					to: ".",
 					force: true,
 				},
-				{ from: "src/sys_prompt.md", to: "." },
 			],
 		}),
 	],
