@@ -1,11 +1,11 @@
 // content script used to gather context for the LLM (process screenshot, dom tree, etc)
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-	console.log("message", message);
 	if (message.action === "buildDomTree") {
 		sendResponse(buildDomTree());
 		return true;
 	} else if (message.action === "processScreenshot") {
+		document.getElementById("playwright-highlight-container").remove(); // remove highlight container
 		processImage(message.args.rawScreenshot, 0.75).then((result) => {
 			sendResponse({ result });
 		});

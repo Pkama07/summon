@@ -5,7 +5,7 @@ import sysPrompt from "./sys_prompt.md";
 
 interface Message {
 	action: string;
-	payload?: any;
+	args?: any;
 }
 
 const modelOutputSchema = z.object({
@@ -23,7 +23,7 @@ const modelOutputSchema = z.object({
 				index: z
 					.number()
 					.describe("The index of the element to be interacted with"),
-				args: z.any().describe("The payload to be passed to the action"),
+				args: z.string().describe("The payload to be passed to the action"),
 			})
 		)
 		.describe("The array of actions to be executed"),
@@ -32,10 +32,11 @@ const modelOutputSchema = z.object({
 const chatModel = new ChatOpenAI({
 	model: "gpt-4o-mini",
 	apiKey: process.env.OPENAI_API_KEY,
-}).withStructuredOutput(modelOutputSchema, { name: "output schema" });
+}).withStructuredOutput(modelOutputSchema);
 
 chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 	if (message.action === "summon") {
+		const { userInput } = message.args;
 		chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
 			const tabId = tabs[0]?.id;
 			if (tabId) {
@@ -50,9 +51,9 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 						);
 					}
 				);
-				const xpathMap: { [key: number]: string } = {};
+				const XPathMap: { [key: number]: string } = {};
 				for (const [index, element] of Object.entries(interactionMap)) {
-					xpathMap[Number(index)] = element.xpath;
+					XPathMap[Number(index)] = element.xpath;
 				}
 				const textualInteractionMap = textifyElementMap(interactionMap);
 				const window = await chrome.windows.getCurrent();
@@ -95,18 +96,30 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 							},
 							{
 								type: "text",
-								text: "\nHere is the list of interactive elements on the page.",
+								text: "Here is the list of interactive elements on the page.",
 							},
 							{
 								type: "text",
 								text: textualInteractionMap,
 							},
+							{
+								type: "text",
+								text: userInput,
+							},
 						],
 					}),
 				];
-				console.log(messages);
-				// const modelResponse = await chatModel.invoke(messages);
-				// sendResponse(modelResponse);
+				const modelResponse = await chatModel.invoke(messages);
+				chrome.tabs.sendMessage(tabId, {
+					action: "execute",
+					args: {
+						actions: modelResponse.actions.map((action) => ({
+							action: action.action,
+							xpath: XPathMap[action.index],
+							args: action.args,
+						})),
+					},
+				});
 			}
 		});
 		return true;
