@@ -1,27 +1,39 @@
 const path = require("path");
+const glob = require("glob");
 const CopyPlugin = require("copy-webpack-plugin");
 const Dotenv = require("dotenv-webpack");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 
+// create a new json obj for the entries allowing us to have nested files in the bundle
+const frontendEntries = Object.fromEntries(
+	glob.sync("./src/frontend/**/*.tsx").map((file) => {
+		const relativePath = file.replace("src/", "").replace(/\.tsx$/, "");
+		return [relativePath, "./" + file];
+	})
+);
+
+const entries = {
+	...frontendEntries,
+	background: "./src/background.ts",
+	popup: "./src/popup.ts",
+	execute: "./src/execute.ts",
+};
+
 module.exports = {
 	mode: "production",
-	entry: {
-		background: "./src/background.ts",
-		popup: "./src/popup.ts",
-		execute: "./src/execute.ts",
-	},
+	entry: entries,
 	output: {
 		path: path.resolve(__dirname, "dist"),
 		filename: "[name].js",
 	},
 	resolve: {
-		extensions: [".ts", ".js"],
+		extensions: [".ts", ".js", ".tsx", ".jsx"],
 	},
 	module: {
 		rules: [
 			// process ts files with ts-loader
 			{
-				test: /\.ts$/,
+				test: /\.tsx?$/,
 				use: "ts-loader",
 				exclude: /node_modules/,
 			},
@@ -29,6 +41,11 @@ module.exports = {
 			{
 				test: /\.md$/,
 				use: "raw-loader",
+			},
+			// load css file and apply tailwind
+			{
+				test: /\.css$/,
+				use: ["style-loader", "css-loader", "postcss-loader"],
 			},
 		],
 	},

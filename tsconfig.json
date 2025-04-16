@@ -7,7 +7,8 @@
 		"esModuleInterop": true,
 		"outDir": "./dist",
 		"rootDir": "./src",
-		"lib": ["dom", "es2020"]
+		"lib": ["dom", "es2020"],
+		"jsx": "react-jsx"
 	},
 	"include": ["src/**/*"]
 }

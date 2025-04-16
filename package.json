@@ -2,18 +2,30 @@
 	"dependencies": {
 		"@langchain/core": "^0.3.44",
 		"@langchain/openai": "^0.5.5",
-		"clean-webpack-plugin": "^4.0.0",
-		"langchain": "^0.3.21"
+		"langchain": "^0.3.21",
+		"react": "^19.1.0",
+		"react-dom": "^19.1.0"
 	},
 	"scripts": {
 		"build": "webpack",
 		"watch": "webpack --watch"
 	},
 	"devDependencies": {
+		"@tailwindcss/postcss": "^4.1.4",
 		"@types/chrome": "^0.0.315",
+		"@types/react": "^19.1.2",
+		"@types/react-dom": "^19.1.2",
+		"autoprefixer": "^10.4.21",
+		"clean-webpack-plugin": "^4.0.0",
 		"copy-webpack-plugin": "^13.0.0",
+		"css-loader": "^7.1.2",
 		"dotenv-webpack": "^8.1.0",
+		"glob": "^11.0.1",
+		"postcss": "^8.5.3",
+		"postcss-loader": "^8.1.1",
 		"raw-loader": "^4.0.2",
+		"style-loader": "^4.0.0",
+		"tailwindcss": "^4.1.4",
 		"ts-loader": "^9.5.2",
 		"typescript": "^5.8.3",
 		"webpack": "^5.99.5",

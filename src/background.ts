@@ -120,18 +120,13 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 						})),
 					},
 				});
+				sendResponse(modelResponse);
 			}
 		});
 		return true;
 	}
 	return false;
 });
-
-async function loadFile(filePath: string) {
-	const fileUrl = chrome.runtime.getURL(filePath);
-	const response = await fetch(fileUrl);
-	return response.text();
-}
 
 function filterNodesAndGetText(domTree: any) {
 	if (!domTree || !domTree.map) {

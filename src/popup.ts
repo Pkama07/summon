@@ -9,7 +9,8 @@ if (userInput == null || !(userInput instanceof HTMLTextAreaElement)) {
 summonButton.addEventListener("click", () => {
 	chrome.runtime.sendMessage(
 		{ action: "summon", args: { userInput: userInput.value } },
-		(_) => {
+		(response) => {
+			console.log("response", response);
 			if (chrome.runtime.lastError) {
 				console.error("Error:", chrome.runtime.lastError);
 				return;
