@@ -8,7 +8,11 @@
 		"outDir": "./dist",
 		"rootDir": "./src",
 		"lib": ["dom", "es2020"],
-		"jsx": "react-jsx"
+		"jsx": "react-jsx",
+		"baseUrl": ".", // sets root directory for module resolution
+		"paths": {
+			"@/*": ["src/frontend/*"] // alias to prettify import paths
+		}
 	},
 	"include": ["src/**/*"]
 }

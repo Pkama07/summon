@@ -1,7 +1,7 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { z } from "zod";
-import sysPrompt from "./sys_prompt.md";
+import sysPrompt from "./sys_prompt.md?raw";
 
 interface Message {
 	action: string;
@@ -88,7 +88,8 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 						content: [
 							{
 								type: "text",
-								text: "Here is the screenshot of the page with the interactive elements highlighted.",
+								text:
+									"Here is the screenshot of the page with the interactive elements highlighted.",
 							},
 							{
 								type: "image_url",

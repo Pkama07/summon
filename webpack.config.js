@@ -6,8 +6,8 @@ const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 
 // create a new json obj for the entries allowing us to have nested files in the bundle
 const frontendEntries = Object.fromEntries(
-	glob.sync("./src/frontend/**/*.tsx").map((file) => {
-		const relativePath = file.replace("src/", "").replace(/\.tsx$/, "");
+	glob.sync("./src/frontend/**/*.ts{,x}").map((file) => {
+		const relativePath = file.replace("src/", "").replace(/\.tsx?$/, "");
 		return [relativePath, "./" + file];
 	})
 );
@@ -28,6 +28,9 @@ module.exports = {
 	},
 	resolve: {
 		extensions: [".ts", ".js", ".tsx", ".jsx"],
+		alias: {
+			"@": path.resolve(__dirname, "src/frontend"),
+		},
 	},
 	module: {
 		rules: [
