@@ -1,5 +1,9 @@
 import { ChatOpenAI } from "@langchain/openai";
-import { SystemMessage, HumanMessage } from "@langchain/core/messages";
+import {
+	SystemMessage,
+	HumanMessage,
+	AIMessage,
+} from "@langchain/core/messages";
 import { z } from "zod";
 import sysPrompt from "./sys_prompt.md?raw";
 
@@ -9,24 +13,33 @@ interface Message {
 }
 
 const modelOutputSchema = z.object({
-	textResponse: z
-		.string()
-		.describe(
-			"The textual output to be displayed to the user along with the execution of the actions"
-		),
+	current_state: z.object({
+		evaluation_previous_goal: z
+			.string()
+			.describe(
+				"Success | Failed | Unknown — Analysis of the elements and image to determine whether the previous goals or actions were successfully completed as intended by the task. Note any unexpected outcomes and briefly explain why it succeeded or failed."
+			),
+		memory: z
+			.string()
+			.describe(
+				"Clearly describe what has been done so far and what needs to be remembered. Be specific. Include a count wherever possible, e.g., '0 out of 10 questions answered'. Also, specify what remains to be done, such as continuing with ABC and XYZ."
+			),
+		next_goal: z
+			.string()
+			.describe(
+				"Describe the intended effect of the actions you propose. On the next step, this description will be used to evaluate the outcome of the actions you propose, so be hyper specific."
+			),
+	}),
 	actions: z
 		.array(
-			z.object({
-				action: z
-					.string()
-					.describe("The action to be executed (click, fill, or scroll)"),
-				index: z
-					.number()
-					.describe("The index of the element to be interacted with"),
-				args: z.string().describe("The payload to be passed to the action"),
-			})
+			z.record(
+				z.string().describe("The action to be executed"),
+				z.object({}).describe("Parameters specific to this action")
+			)
 		)
-		.describe("The array of actions to be executed"),
+		.describe(
+			"A sequence of actions, each keyed by its action name and holding its specific parameters."
+		),
 });
 
 const chatModel = new ChatOpenAI({
@@ -37,92 +50,108 @@ const chatModel = new ChatOpenAI({
 
 chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 	if (message.action === "summon") {
-		const { userInput } = message.args;
+		const { request } = message.args;
 		chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
 			const tabId = tabs[0]?.id;
+			let modelOutputs: z.infer<typeof modelOutputSchema>[] = [];
 			if (tabId) {
-				const interactionMap: { [key: number]: any } = await new Promise(
-					(resolve) => {
+				let done = false;
+				while (!done) {
+					const interactionMap: { [key: number]: any } = await new Promise(
+						(resolve) => {
+							chrome.tabs.sendMessage(
+								tabId,
+								{ action: "buildDomTree" },
+								(response) => {
+									resolve(filterNodesAndGetText(response));
+								}
+							);
+						}
+					);
+					const XPathMap: { [key: number]: string } = { 0: "window" };
+					for (const [index, element] of Object.entries(interactionMap)) {
+						XPathMap[Number(index)] = element.xpath;
+					}
+					const textualInteractionMap = textifyElementMap(interactionMap);
+					const window = await chrome.windows.getCurrent();
+					const rawScreenshot = await new Promise((resolve) => {
+						if (window.id) {
+							chrome.tabs.captureVisibleTab(
+								window.id,
+								{ format: "png" },
+								(dataUrl) => resolve(dataUrl)
+							);
+						} else {
+							resolve("");
+						}
+					});
+					const processedScreenshot = await new Promise((resolve) => {
 						chrome.tabs.sendMessage(
 							tabId,
-							{ action: "buildDomTree" },
+							{
+								action: "processScreenshot",
+								args: { rawScreenshot },
+							},
 							(response) => {
-								resolve(filterNodesAndGetText(response));
+								resolve(response.result);
 							}
 						);
-					}
-				);
-				const XPathMap: { [key: number]: string } = {};
-				for (const [index, element] of Object.entries(interactionMap)) {
-					XPathMap[Number(index)] = element.xpath;
-				}
-				const textualInteractionMap = textifyElementMap(interactionMap);
-				const window = await chrome.windows.getCurrent();
-				const rawScreenshot = await new Promise((resolve) => {
-					if (window.id) {
-						chrome.tabs.captureVisibleTab(
-							window.id,
-							{ format: "png" },
-							(dataUrl) => resolve(dataUrl)
-						);
-					} else {
-						resolve("");
-					}
-				});
-				const processedScreenshot = await new Promise((resolve) => {
+					});
+					const messages = [
+						new SystemMessage(sysPrompt),
+						new HumanMessage({
+							content: `The ultimate task: ${request}. If you've achieved the task, output the done action.`,
+						}),
+						new HumanMessage({
+							content: "Here are the previous steps you have taken:",
+						}),
+						...modelOutputs.map(
+							(output) =>
+								new AIMessage({
+									content: JSON.stringify(output),
+								})
+						),
+						new HumanMessage({
+							content: [
+								{
+									type: "text",
+									text:
+										"Here is the screenshot of the page with the interactive elements highlighted.",
+								},
+								{
+									type: "image_url",
+									image_url: { url: processedScreenshot },
+								},
+								{
+									type: "text",
+									text: "Here is the list of interactive elements on the page.",
+								},
+								{
+									type: "text",
+									text: textualInteractionMap,
+								},
+							],
+						}),
+					];
+					const modelResponse = await chatModel.invoke(messages);
 					chrome.tabs.sendMessage(
 						tabId,
 						{
-							action: "processScreenshot",
-							args: { rawScreenshot },
+							action: "execute",
+							args: {
+								actions: modelResponse.actions,
+								xpathMap: XPathMap,
+							},
 						},
 						(response) => {
-							resolve(response.result);
+							if (response.done) {
+								done = true;
+							}
 						}
 					);
-				});
-
-				// load the system prompt
-				const messages = [
-					new SystemMessage(sysPrompt),
-					new HumanMessage({
-						content: [
-							{
-								type: "text",
-								text:
-									"Here is the screenshot of the page with the interactive elements highlighted.",
-							},
-							{
-								type: "image_url",
-								image_url: { url: processedScreenshot },
-							},
-							{
-								type: "text",
-								text: "Here is the list of interactive elements on the page.",
-							},
-							{
-								type: "text",
-								text: textualInteractionMap,
-							},
-							{
-								type: "text",
-								text: userInput,
-							},
-						],
-					}),
-				];
-				const modelResponse = await chatModel.invoke(messages);
-				chrome.tabs.sendMessage(tabId, {
-					action: "execute",
-					args: {
-						actions: modelResponse.actions.map((action) => ({
-							action: action.action,
-							xpath: XPathMap[action.index],
-							args: action.args,
-						})),
-					},
-				});
-				sendResponse(modelResponse);
+					modelOutputs.push(modelResponse);
+				}
+				console.log("Done");
 			}
 		});
 		return true;

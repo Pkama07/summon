@@ -64,7 +64,7 @@ const buildDomTree = (
 		viewportExpansion,
 		debugMode,
 	} = args;
-	let highlightIndex = 0; // Reset highlight index
+	let highlightIndex = 1; // Reset highlight index
 
 	// Add timing stack to handle recursion
 	const TIMING_STACK = {
@@ -134,7 +134,7 @@ const buildDomTree = (
 	// Simple timing helper that only runs in debug mode
 	function measureTime(fn) {
 		if (!debugMode) return fn;
-		return function (...args) {
+		return function(...args) {
 			const start = performance.now();
 			const result = fn.apply(this, args);
 			const duration = performance.now() - start;
@@ -192,8 +192,7 @@ const buildDomTree = (
 			rect = element.getBoundingClientRect();
 			const duration = performance.now() - start;
 			if (PERF_METRICS) {
-				PERF_METRICS.buildDomTreeBreakdown.domOperations.getBoundingClientRect +=
-					duration;
+				PERF_METRICS.buildDomTreeBreakdown.domOperations.getBoundingClientRect += duration;
 				PERF_METRICS.buildDomTreeBreakdown.domOperationCounts
 					.getBoundingClientRect++;
 			}
@@ -227,8 +226,7 @@ const buildDomTree = (
 			style = window.getComputedStyle(element);
 			const duration = performance.now() - start;
 			if (PERF_METRICS) {
-				PERF_METRICS.buildDomTreeBreakdown.domOperations.getComputedStyle +=
-					duration;
+				PERF_METRICS.buildDomTreeBreakdown.domOperations.getComputedStyle += duration;
 				PERF_METRICS.buildDomTreeBreakdown.domOperationCounts
 					.getComputedStyle++;
 			}
