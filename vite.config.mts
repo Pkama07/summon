@@ -1,10 +1,8 @@
-// vite.config.ts
 import { defineConfig } from "vite";
 import path from "path";
 import { glob } from "glob";
 import dotenv from "dotenv";
 import tailwindcss from "@tailwindcss/vite";
-import { viteStaticCopy } from "vite-plugin-static-copy";
 
 dotenv.config({ override: true });
 

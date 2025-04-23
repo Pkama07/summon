@@ -33,37 +33,16 @@ export default function App() {
 		setIsLoading(true);
 
 		try {
-			// TODO: Replace with your actual API call
-			const response = await fetch("/api/chat", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ message: input }),
-			});
-
-			if (!response.ok) throw new Error("Failed to fetch response");
-
-			const reader = response.body?.getReader();
-			if (!reader) throw new Error("No reader available");
-
-			let assistantMessage = "";
-			setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-
-				const chunk = new TextDecoder().decode(value);
-				assistantMessage += chunk;
-
-				setMessages((prev) => {
-					const newMessages = [...prev];
-					newMessages[newMessages.length - 1] = {
-						role: "assistant",
-						content: assistantMessage,
-					};
-					return newMessages;
-				});
-			}
+			chrome.runtime.sendMessage(
+				{ action: "summon", args: { userInput: userMessage.content } },
+				(response) => {
+					console.log("response", response);
+					if (chrome.runtime.lastError) {
+						console.error("Error:", chrome.runtime.lastError);
+						return;
+					}
+				}
+			);
 		} catch (error) {
 			console.error("Error:", error);
 			setMessages((prev) => [
@@ -77,8 +56,6 @@ export default function App() {
 			setIsLoading(false);
 		}
 	};
-
-	return <div className="text-red-500">iwuefoewf</div>;
 
 	return (
 		<div className="w-[400px] h-[600px] flex flex-col">

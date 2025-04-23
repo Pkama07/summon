@@ -31,7 +31,8 @@ const modelOutputSchema = z.object({
 
 const chatModel = new ChatOpenAI({
 	model: "gpt-4o-mini",
-	apiKey: process.env.OPENAI_API_KEY,
+	apiKey:
+		"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",
 }).withStructuredOutput(modelOutputSchema);
 
 chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
