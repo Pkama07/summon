@@ -54,10 +54,12 @@ An output of a batch of actions like this will be referred to as a step.
 
 Here is the list of possible actions you can take and their parameters:
 
-- Click on a clickable element: `{"click": {"index": <element index>}}`
-- Scroll down by a fraction of the viewport height: `{"scroll_down": {"fraction": 0.6}}`
-- Scroll up by a fraction of the viewport height: `{"scroll_up": {"fraction": 0.3}}`
-- Done (output when the task is complete): `{"done": {}}`
+- Click on a clickable element: `{"action_name: "click", "parameters": [<index of element>]}`
+- Scroll down by a fraction of the viewport height: `{"action_name": "scroll_down", "parameters": [<fraction of page to scroll>]}`
+- Scroll up by a fraction of the viewport height: `{"action_name": "scroll_up", "parameters": [<fraction of page to scroll>]}`
+- Done (output when the task is complete): `{"action_name: "done", "parameters": []}`
+
+All parameters must be outputted as strings; these will be casted to the correct type afterwards.
 
 Generally, when you are outputting action sequences, note that you are much better at taking actions on elements that are in your visual field. So, on a particular step, emit actions which act only on the elements that are directly in the page view, then use the scroll utilities to shift the view to other elements if you want to take additional actions. For instance, if there is a long form on a page which seems to extend past the current page view (e.g. the submit button is not in view), a potential solution could be to scroll down on the page until the desired element is in view, which you can determine by the label on the element.
 
@@ -81,7 +83,8 @@ First output:
 	},
 	"actions": [
 		{
-			"click": { "index": 2 }
+			"action_name": "click",
+			"parameters": { "index": 2 }
 		}
 	]
 }
@@ -98,7 +101,8 @@ Second output:
 	},
 	"actions": [
 		{
-			"done": {}
+			"action_name": "done",
+			"parameters": {}
 		}
 	]
 }
@@ -106,7 +110,7 @@ Second output:
 
 ### Example 2: Complete a multiple-choice quiz
 
-In this example, the submit button isn't in view on the first page. Remember, you should be able to deduce the questions which these options pertain to based on the passed image of the page.
+In this example, the submit button isn't in view on the first page. Remember, you would be able to deduce the questions which these options pertain to based on the passed image of the page.
 
 DOM:
 [1]<button>3</button>
@@ -126,7 +130,16 @@ First output:
 		"memory": "No questions answered yet.",
 		"next_goal": "Answer the first question (2+2=4) and the second question (capital of France = Paris)."
 	},
-	"actions": [{ "click": { "index": 2 } }, { "click": { "index": 5 } }]
+	"actions": [
+		{
+			"action_name": "click",
+			"parameters": ["2"]
+		},
+		{
+			"action_name": "click",
+			"parameters": ["5"]
+		}
+	]
 }
 ```
 
@@ -139,7 +152,12 @@ Second output:
 		"memory": "Questions answered. Need to scroll to submit button.",
 		"next_goal": "Scroll down to bring the submit button into view."
 	},
-	"actions": [{ "scroll_down": { "fraction": 0.5 } }]
+	"actions": [
+		{
+			"action_name": "scroll_down",
+			"parameters": ["0.5"]
+		}
+	]
 }
 ```
 
@@ -152,7 +170,12 @@ Third output:
 		"memory": "All questions answered. Ready to submit.",
 		"next_goal": "Click on the submit button and submit the quiz."
 	},
-	"actions": [{ "click": { "index": 7 } }]
+	"actions": [
+		{
+			"action_name": "click",
+			"parameters": ["7"]
+		}
+	]
 }
 ```
 
@@ -167,7 +190,8 @@ Fourth output:
 	},
 	"actions": [
 		{
-			"done": {}
+			"action_name": "done",
+			"parameters": {}
 		}
 	]
 }

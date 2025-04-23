@@ -34,7 +34,7 @@ export default function App() {
 
 		try {
 			chrome.runtime.sendMessage(
-				{ action: "summon", args: { userInput: userMessage.content } },
+				{ action: "summon", args: { request: userMessage.content } },
 				(response) => {
 					console.log("response", response);
 					if (chrome.runtime.lastError) {

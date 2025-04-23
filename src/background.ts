@@ -32,10 +32,10 @@ const modelOutputSchema = z.object({
 	}),
 	actions: z
 		.array(
-			z.record(
-				z.string().describe("The action to be executed"),
-				z.object({}).describe("Parameters specific to this action")
-			)
+			z.object({
+				action_name: z.string().describe("The action to be executed"),
+				parameters: z.array(z.string()),
+			})
 		)
 		.describe(
 			"A sequence of actions, each keyed by its action name and holding its specific parameters."
@@ -57,6 +57,7 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 			if (tabId) {
 				let done = false;
 				while (!done) {
+					console.log("requesting interaction map");
 					const interactionMap: { [key: number]: any } = await new Promise(
 						(resolve) => {
 							chrome.tabs.sendMessage(
@@ -100,17 +101,21 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 					const messages = [
 						new SystemMessage(sysPrompt),
 						new HumanMessage({
-							content: `The ultimate task: ${request}. If you've achieved the task, output the done action.`,
+							content: `The ultimate task: "${request}". If you've achieved the task, output the done action.`,
 						}),
-						new HumanMessage({
-							content: "Here are the previous steps you have taken:",
-						}),
-						...modelOutputs.map(
-							(output) =>
-								new AIMessage({
-									content: JSON.stringify(output),
-								})
-						),
+						...(modelOutputs.length == 0
+							? [new HumanMessage({ content: "No previous steps taken." })]
+							: [
+									new HumanMessage({
+										content: "Here are the previous steps you have taken:",
+									}),
+									...modelOutputs.map(
+										(output) =>
+											new AIMessage({
+												content: JSON.stringify(output),
+											})
+									),
+							  ]),
 						new HumanMessage({
 							content: [
 								{
@@ -133,7 +138,9 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 							],
 						}),
 					];
+					console.log("messages", messages);
 					const modelResponse = await chatModel.invoke(messages);
+					console.log(modelResponse);
 					chrome.tabs.sendMessage(
 						tabId,
 						{
