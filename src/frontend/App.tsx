@@ -57,6 +57,25 @@ export default function App() {
 		}
 	};
 
+	const logInteractiveElements = () => {
+		try {
+			chrome.runtime.sendMessage(
+				{ action: "getInteractiveElements" },
+				(response) => {
+					console.log("response", response);
+					if (chrome.runtime.lastError) {
+						console.error("Error:", chrome.runtime.lastError);
+						return;
+					}
+				}
+			);
+		} catch (error) {
+			console.error("Error:", error);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
 	return (
 		<div className="w-[400px] h-[600px] flex flex-col">
 			<Card className="flex-1 flex flex-col overflow-hidden m-0 rounded-none">
@@ -95,6 +114,13 @@ export default function App() {
 							disabled={isLoading}
 							className="flex-1"
 						/>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={logInteractiveElements}
+						>
+							Log Interactive Elements
+						</Button>
 						<Button type="submit" disabled={isLoading || !input.trim()}>
 							{isLoading ? "Sending..." : "Send"}
 						</Button>

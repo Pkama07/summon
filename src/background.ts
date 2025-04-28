@@ -55,18 +55,23 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 			let modelOutputs: z.infer<typeof modelOutputSchema>[] = [];
 			if (tabId) {
 				let done = false;
-				while (!done) {
-					console.log("requesting interaction map");
-					const interactionMap: { [key: number]: any } = await new Promise(
-						(resolve) => {
-							chrome.tabs.sendMessage(
-								tabId,
-								{ action: "buildDomTree" },
-								(response) => {
-									resolve(filterNodesAndGetText(response));
-								}
-							);
-						}
+				let count = 0;
+				while (!done && count < 5) {
+					const stateInfo: {
+						domTree: any;
+						pixelsAbove: number;
+						pixelsBelow: number;
+					} = await new Promise((resolve) => {
+						chrome.tabs.sendMessage(
+							tabId,
+							{ action: "gatherStateInfo" },
+							(response) => {
+								resolve(response);
+							}
+						);
+					});
+					const interactionMap: { [key: number]: any } = filterNodesAndGetText(
+						stateInfo.domTree
 					);
 					const XPathMap: { [key: number]: string } = { 0: "window" };
 					for (const [index, element] of Object.entries(interactionMap)) {
@@ -134,6 +139,10 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 									type: "text",
 									text: textualInteractionMap,
 								},
+								{
+									type: "text",
+									text: `There are ${stateInfo.pixelsAbove} pixels above and ${stateInfo.pixelsBelow} pixels below the viewport.`,
+								},
 							],
 						}),
 					];
@@ -156,8 +165,29 @@ chrome.runtime.onMessage.addListener((message: Message, _, sendResponse) => {
 						}
 					);
 					modelOutputs.push(modelResponse);
+					count++;
 				}
 				console.log("Done");
+			}
+		});
+		return true;
+	} else if (message.action === "getInteractiveElements") {
+		chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+			const tabId = tabs[0]?.id;
+			if (tabId) {
+				const interactionMap: { [key: number]: any } = await new Promise(
+					(resolve) => {
+						chrome.tabs.sendMessage(
+							tabId,
+							{ action: "buildDomTree" },
+							(response) => {
+								resolve(filterNodesAndGetText(response));
+							}
+						);
+					}
+				);
+				const textualInteractionMap = textifyElementMap(interactionMap);
+				sendResponse({ textualInteractionMap });
 			}
 		});
 		return true;
